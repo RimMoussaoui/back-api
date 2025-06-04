@@ -14,7 +14,7 @@ const initDatabase = async () => {
   console.log("Initialisation de la connexion à CouchDB...")
 
   // URL de connexion à CouchDB (à modifier selon votre configuration)
-  const couchdbUrl = process.env.COUCHDB_URL || "http://admin:romlyj6@192.168.1.116:5984"
+  const couchdbUrl = process.env.COUCHDB_URL || "https://admin:romlyj6@couchdb-server-production.up.railway.app"
 
   try {
     // Créer la connexion à CouchDB
