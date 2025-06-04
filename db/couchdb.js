@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Configuration de la connexion à CouchDB
-const COUCHDB_URL = process.env.COUCHDB_URL || 'http://admin:romly5@192.168.1.116:5984';
+const COUCHDB_URL = process.env.COUCHDB_URL || 'https://admin:romlyj6@couchdb-server-production.up.railway.app';
 const DB_NAME = process.env.DB_NAME || 'tree_database';
 
 // Créer une instance de connexion à CouchDB
