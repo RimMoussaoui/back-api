@@ -164,8 +164,22 @@ router.post("/:id/history", async (req, res) => {
   try {
     const treeId = req.params.id
     const userId = req.user.userId
-    const { date, height, diameter, health, notes } = req.body
+    const {
+      date,
+      height,
+      diameter,
+      health,
+      notes,
+      oliveQuantity,
+      oilQuantity,
+      images,
+      observations,
+      recordedBy,
+      metadata,
+    } = req.body
     const db = await getDatabase()
+
+    console.log("[API] Données reçues pour l'historique:", req.body)
 
     // Validation des données
     if (!date) {
@@ -178,6 +192,14 @@ router.post("/:id/history", async (req, res) => {
 
     if (diameter !== null && diameter !== undefined && (isNaN(diameter) || diameter < 0)) {
       return res.status(400).json({ error: "Le diamètre doit être un nombre positif" })
+    }
+
+    if (oliveQuantity !== null && oliveQuantity !== undefined && (isNaN(oliveQuantity) || oliveQuantity < 0)) {
+      return res.status(400).json({ error: "La quantité d'olives doit être un nombre positif" })
+    }
+
+    if (oilQuantity !== null && oilQuantity !== undefined && (isNaN(oilQuantity) || oilQuantity < 0)) {
+      return res.status(400).json({ error: "La quantité d'huile doit être un nombre positif" })
     }
 
     // Récupérer l'arbre existant
@@ -200,10 +222,26 @@ router.post("/:id/history", async (req, res) => {
       diameter: diameter || null,
       health: health || null,
       notes: notes || null,
+      oliveQuantity: oliveQuantity || null,
+      oilQuantity: oilQuantity || null,
+      images: images || null,
+      observations: observations || null,
+      recordedBy: recordedBy || null,
       timestamp,
       addedBy: userId,
       addedAt: new Date().toISOString(),
     }
+
+    // Ajouter les métadonnées si elles existent
+    if (metadata) {
+      Object.keys(metadata).forEach((key) => {
+        if (metadata[key] !== null && metadata[key] !== undefined) {
+          newHistoryEntry[key] = metadata[key]
+        }
+      })
+    }
+
+    console.log("[API] Nouvelle entrée d'historique:", newHistoryEntry)
 
     // Initialiser l'historique s'il n'existe pas
     if (!tree.history) {
@@ -253,6 +291,8 @@ router.post("/:id/history", async (req, res) => {
       throw new Error("Erreur lors de l'ajout de l'entrée d'historique")
     }
 
+    console.log("[API] Entrée d'historique ajoutée avec succès")
+
     res.status(201).json({
       message: "Entrée d'historique ajoutée avec succès",
       entry: newHistoryEntry,
@@ -273,7 +313,8 @@ router.put("/:id/history/:year/:timestamp", async (req, res) => {
   try {
     const { id: treeId, year, timestamp } = req.params
     const userId = req.user.userId
-    const { date, height, diameter, health, notes } = req.body
+    const { date, height, diameter, health, notes, oliveQuantity, oilQuantity, images, observations, recordedBy } =
+      req.body
     const db = await getDatabase()
 
     // Récupérer l'arbre existant
@@ -306,6 +347,14 @@ router.put("/:id/history/:year/:timestamp", async (req, res) => {
       return res.status(400).json({ error: "Le diamètre doit être un nombre positif" })
     }
 
+    if (oliveQuantity !== undefined && oliveQuantity !== null && (isNaN(oliveQuantity) || oliveQuantity < 0)) {
+      return res.status(400).json({ error: "La quantité d'olives doit être un nombre positif" })
+    }
+
+    if (oilQuantity !== undefined && oilQuantity !== null && (isNaN(oilQuantity) || oilQuantity < 0)) {
+      return res.status(400).json({ error: "La quantité d'huile doit être un nombre positif" })
+    }
+
     // Mettre à jour l'entrée
     const existingEntry = tree.history[year][entryIndex]
     const updatedEntry = {
@@ -315,6 +364,11 @@ router.put("/:id/history/:year/:timestamp", async (req, res) => {
       diameter: diameter !== undefined ? diameter : existingEntry.diameter,
       health: health !== undefined ? health : existingEntry.health,
       notes: notes !== undefined ? notes : existingEntry.notes,
+      oliveQuantity: oliveQuantity !== undefined ? oliveQuantity : existingEntry.oliveQuantity,
+      oilQuantity: oilQuantity !== undefined ? oilQuantity : existingEntry.oilQuantity,
+      images: images !== undefined ? images : existingEntry.images,
+      observations: observations !== undefined ? observations : existingEntry.observations,
+      recordedBy: recordedBy !== undefined ? recordedBy : existingEntry.recordedBy,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
     }
@@ -468,6 +522,12 @@ router.get("/:id/history/stats", async (req, res) => {
     // Calculer les statistiques
     const heights = allEntries.filter((e) => e.height !== null && e.height !== undefined).map((e) => e.height)
     const diameters = allEntries.filter((e) => e.diameter !== null && e.diameter !== undefined).map((e) => e.diameter)
+    const oliveQuantities = allEntries
+      .filter((e) => e.oliveQuantity !== null && e.oliveQuantity !== undefined)
+      .map((e) => e.oliveQuantity)
+    const oilQuantities = allEntries
+      .filter((e) => e.oilQuantity !== null && e.oilQuantity !== undefined)
+      .map((e) => e.oilQuantity)
 
     const stats = {
       totalEntries: allEntries.length,
@@ -493,6 +553,28 @@ router.get("/:id/history/stats", async (req, res) => {
               avg: diameters.reduce((a, b) => a + b, 0) / diameters.length,
             }
           : null,
+      harvest: {
+        olives:
+          oliveQuantities.length > 0
+            ? {
+                count: oliveQuantities.length,
+                min: Math.min(...oliveQuantities),
+                max: Math.max(...oliveQuantities),
+                avg: oliveQuantities.reduce((a, b) => a + b, 0) / oliveQuantities.length,
+                total: oliveQuantities.reduce((a, b) => a + b, 0),
+              }
+            : null,
+        oil:
+          oilQuantities.length > 0
+            ? {
+                count: oilQuantities.length,
+                min: Math.min(...oilQuantities),
+                max: Math.max(...oilQuantities),
+                avg: oilQuantities.reduce((a, b) => a + b, 0) / oilQuantities.length,
+                total: oilQuantities.reduce((a, b) => a + b, 0),
+              }
+            : null,
+      },
       healthDistribution: {},
       years: Object.keys(history),
     }
@@ -513,12 +595,20 @@ router.get("/:id/history/stats", async (req, res) => {
         const yearDiameters = yearEntries
           .filter((e) => e.diameter !== null && e.diameter !== undefined)
           .map((e) => e.diameter)
+        const yearOlives = yearEntries
+          .filter((e) => e.oliveQuantity !== null && e.oliveQuantity !== undefined)
+          .map((e) => e.oliveQuantity)
+        const yearOil = yearEntries
+          .filter((e) => e.oilQuantity !== null && e.oilQuantity !== undefined)
+          .map((e) => e.oilQuantity)
 
         stats.byYear[yearKey] = {
           count: yearEntries.length,
           avgHeight: yearHeights.length > 0 ? yearHeights.reduce((a, b) => a + b, 0) / yearHeights.length : null,
           avgDiameter:
             yearDiameters.length > 0 ? yearDiameters.reduce((a, b) => a + b, 0) / yearDiameters.length : null,
+          totalOlives: yearOlives.length > 0 ? yearOlives.reduce((a, b) => a + b, 0) : null,
+          totalOil: yearOil.length > 0 ? yearOil.reduce((a, b) => a + b, 0) : null,
         }
       })
     }
